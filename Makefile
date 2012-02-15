@@ -26,7 +26,8 @@ PROG=${BUILDDIR}/tvheadend
 
 CFLAGS += -Wall -Werror -Wwrite-strings -Wno-deprecated-declarations
 CFLAGS += -Wmissing-prototypes
-LDFLAGS += -lrt -ldl
+LDFLAGS += -lrt -ldl -static -lixml -lupnp -lthreadutil
+LDFLAGS += -L../libupnp-1.6.15/libs
 
 #
 # Core
@@ -69,7 +70,12 @@ SRCS =  src/main.c \
 	src/rawtsinput.c \
 	src/iptv_input.c \
 	src/avc.c \
-
+	src/tvstring.c \
+	src/upnp/tv_upnp.c \
+	src/upnp/tv_upnp_cfg.c \
+	src/upnp/tv_upnp_cb.c \
+	src/upnp/tv_upnp_browse.c \
+	src/upnp/tv_upnp_tools.c \
 
 SRCS += src/plumbing/tsfix.c \
 	src/plumbing/globalheaders.c \
@@ -132,8 +138,19 @@ SRCS_EXTRA = src/extra/capmt_ca.c
 
 SRCS-$(CONFIG_AVAHI) += src/avahi.c
 
+
+#
+# UPNP interface
+# 
+
+#SRCS-$(CONFIG_UPNP) += src/tv_upnp.c
+
+
 ${BUILDDIR}/src/avahi.o : CFLAGS = \
                       $(shell pkg-config --cflags avahi-client) -Wall -Werror
+
+CFLAGS += -I../libupnp-1.6.15/upnp/inc
+CFLAGS += -I../libupnp-1.6.15/ixml/inc
 
 # Various transformations
 SRCS  += $(SRCS-yes)

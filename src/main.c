@@ -1,6 +1,6 @@
 /*
  *  TVheadend
- *  Copyright (C) 2007 - 2010 Andreas Öman
+ *  Copyright (C) 2007 - 2010 Andreas ï¿½man
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -58,6 +58,7 @@
 #include "trap.h"
 #include "settings.h"
 #include "ffdecsa/FFdecsa.h"
+#include "upnp/tv_upnp.h"
 
 int running;
 extern const char *htsversion;
@@ -112,7 +113,7 @@ gtimer_arm_abs(gtimer_t *gti, gti_callback_t *callback, void *opaque,
 
   if(gti->gti_callback != NULL)
     LIST_REMOVE(gti, gti_link);
-    
+
   gti->gti_callback = callback;
   gti->gti_opaque = opaque;
   gti->gti_expire = when;
@@ -128,7 +129,7 @@ gtimer_arm(gtimer_t *gti, gti_callback_t *callback, void *opaque, int delta)
 {
   time_t now;
   time(&now);
-  
+
   gtimer_arm_abs(gti, callback, opaque, now + delta);
 }
 
@@ -175,13 +176,13 @@ usage(const char *argv0)
   printf(" -r <tsfile>     Read the given transport stream file and present\n"
 	 "                 found services as channels\n");
   printf(" -A              Immediately call abort()\n");
-	 
+
   printf("\n");
   printf("For more information read the man page or visit\n");
   printf(" http://www.lonelycoder.com/hts/\n");
   printf("\n");
   exit(0);
- 
+
 }
 
 
@@ -204,17 +205,17 @@ mainloop(void)
     comet_flush(); /* Flush idle comet mailboxes */
 
     pthread_mutex_lock(&global_lock);
-    
+
     while((gti = LIST_FIRST(&gtimers)) != NULL) {
       if(gti->gti_expire > dispatch_clock)
 	break;
-      
+
       cb = gti->gti_callback;
       LIST_REMOVE(gti, gti_link);
       gti->gti_callback = NULL;
 
       cb(gti->gti_opaque);
-      
+
     }
     pthread_mutex_unlock(&global_lock);
   }
@@ -365,7 +366,7 @@ main(int argc, char **argv)
   time(&dispatch_clock);
 
   trap_init(argv[0]);
-  
+
   /**
    * Initialize subsystems
    */
@@ -402,7 +403,7 @@ main(int argc, char **argv)
   htsp_init();
 
   ffdecsa_init();
-  
+
   if(rawts_input != NULL)
     rawts_init(rawts_input);
 
@@ -412,6 +413,10 @@ main(int argc, char **argv)
 #ifdef CONFIG_AVAHI
   avahi_init();
 #endif
+
+//#ifdef CONFIG_UPNP
+  tv_upnp_init();
+//#endif
 
   pthread_mutex_unlock(&global_lock);
 
@@ -442,6 +447,10 @@ main(int argc, char **argv)
 
   epg_save();
 
+  //#ifdef CONFIG_UPNP
+    tv_upnp_deinit();
+  //#endif
+
   tvhlog(LOG_NOTICE, "STOP", "Exiting HTS Tvheadend");
 
   if(forkaway)
@@ -467,7 +476,7 @@ static const char *logtxtmeta[8][2] = {
  * Internal log function
  */
 static void
-tvhlogv(int notify, int severity, const char *subsys, const char *fmt, 
+tvhlogv(int notify, int severity, const char *subsys, const char *fmt,
 	va_list ap)
 {
   char buf[2048];
@@ -505,7 +514,7 @@ tvhlogv(int notify, int severity, const char *subsys, const char *fmt,
   /**
    * Write to stderr
    */
-  
+
   if(log_stderr && (log_debug_to_console || severity < LOG_DEBUG)) {
     const char *leveltxt = logtxtmeta[severity][0];
     const char *sgr      = logtxtmeta[severity][1];
@@ -602,7 +611,7 @@ limitedlog(loglimiter_t *ll, const char *sys, const char *o, const char *event)
     ll->events = 0;
     buf[0] = 0;
   } else {
-    snprintf(buf, sizeof(buf), ", %d duplicate log lines suppressed", 
+    snprintf(buf, sizeof(buf), ", %d duplicate log lines suppressed",
 	     ll->events);
   }
 
@@ -613,14 +622,14 @@ limitedlog(loglimiter_t *ll, const char *sys, const char *o, const char *event)
 
 /**
  *
- */  
+ */
 const char *
 hostconnection2str(int type)
 {
   switch(type) {
   case HOSTCONNECTION_USB12:
     return "USB (12 Mbit/s)";
-    
+
   case HOSTCONNECTION_USB480:
     return "USB (480 Mbit/s)";
 
@@ -656,7 +665,7 @@ readlinefromfile(const char *path, char *buf, size_t buflen)
 
 /**
  *
- */  
+ */
 int
 get_device_connection(const char *dev)
 {
@@ -671,7 +680,7 @@ get_device_connection(const char *dev)
     return HOSTCONNECTION_PCI;
   } else {
     speed = atoi(l);
-   
+
     return speed >= 480 ? HOSTCONNECTION_USB480 : HOSTCONNECTION_USB12;
   }
 }
