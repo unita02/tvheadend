@@ -49,7 +49,25 @@ typedef struct upnp_br_node   upnp_br_node_t;
 
 struct upnp_br_leaf {
     char path[1025]; // TODO
+    char protocol[1025]; // TODO
+    long long size;
+    long duration;
+    long bitrate;
+    char resolution[100]; // TODO
+    long sampleFrequency;
+    int nrAudioChannels;
+
+    /*
+protocolInfo=\"http-get:*:video/x-matroska:*\" "
+size=\"1172428172\"
+duration=\"00:14:48.0\"
+bitrate=\"640\"
+resolution=\"1920x818\"
+sampleFrequency=\"48000\"
+nrAudioChannels=\"1\"
+        */
 };
+
 struct upnp_br_node {
     upnp_br_node_t* parent;
     upnp_br_node_t* prev_s;
@@ -70,10 +88,12 @@ static upnp_br_node_t* upnp_br_root = NULL;
 void tv_upnp_browse_node2xml( tvstring_t* xml, upnp_br_node_t* node );
 
 upnp_br_node_t* new_node( const char* name, int id, int rest );
-upnp_br_node_t* new_leaf( const char* name, int id, int rest );
+upnp_br_node_t* new_leaf( const char* name, const char* path, int id, int rest );
 
 void release_node( upnp_br_node_t* node );
 void release_leaf( upnp_br_leaf_t* leaf );
+tvstring_t* prn_leaf_url2tvs( tvstring_t* server, unsigned short port, upnp_br_leaf_t* leaf );
+tvstring_t* prn_leaf_attr2tvs( upnp_br_leaf_t* leaf );
 
 void append_as_child( upnp_br_node_t* parent, upnp_br_node_t* node );
 
@@ -100,11 +120,11 @@ upnp_br_node_t* new_node( const char* name, int id, int rest  ) {
     return nd;
 }
 
-upnp_br_node_t* new_leaf( const char* name, int id, int rest  ) {
+upnp_br_node_t* new_leaf( const char* name, const char* path, int id, int rest  ) {
     upnp_br_node_t* nd = new_node( name, id, rest  );
-    if( nd != NULL )
+    if( nd != NULL ) {
         nd->leaf = (upnp_br_leaf_t*) calloc(sizeof(upnp_br_leaf_t), 1);
-
+    }
     return nd;
 }
 
@@ -145,6 +165,27 @@ void release_node( upnp_br_node_t* node )
 void release_leaf( upnp_br_leaf_t* leaf )
 {
     //TODO
+}
+
+/*
+        tvs_cat( xml, "http://" );
+        tvs_append( xml, tv_upnp_server_ip_g );
+        tvs_cat( xml, ":" );
+        tvs_cat_int( xml, tv_upnp_server_port_g );
+        tvs_cat( xml, "/Sintel.2010.1080p.mkv" );
+ */
+tvstring_t* prn_leaf_url2tvs( tvstring_t* server, unsigned short port, upnp_br_leaf_t* leaf )
+{
+    tvstring_t* ret = tvs_newp( "http://" );
+
+    return ret;
+}
+
+tvstring_t* prn_leaf_attr2tvs( upnp_br_leaf_t* leaf )
+{
+    tvstring_t* ret = tvs_newp( "protocolInfo=\"" );
+
+    return ret;
 }
 
 int is_leaf( upnp_br_node_t* node )
@@ -188,14 +229,14 @@ void tv_upnp_browse_tv_tree_init(void)
 
     /* Send all channels */
     RB_FOREACH( ch, &channel_name_tree, ch_name_link ) {
-        upnp_br_node_t* ch_leaf = new_leaf( ch->ch_name, ++ch_curr, 1 );
+        upnp_br_node_t* ch_leaf = new_leaf( ch->ch_name, ch->ch_name, ++ch_curr, 1 ); // TODO: sdp
         append_as_child( live, ch_leaf );
     }
 
 
     /* Send all DVR entries */
     LIST_FOREACH(de, &dvrentries, de_global_link) {
-        upnp_br_node_t* rec_leaf = new_leaf( de->de_filename, ++rec_curr, 1 );
+        upnp_br_node_t* rec_leaf = new_leaf( de->de_title, de->de_filename, ++rec_curr, 1 );
         append_as_child( recs, rec_leaf );
     }
 }
@@ -262,6 +303,8 @@ void tv_upnp_browse_node2xml( tvstring_t* xml, upnp_br_node_t* node )
                       "<upnp:class>object.container</upnp:class>"
                       "</container>" );
     } else {
+        if( node->leaf == NULL )
+            return;
         if( node->parent != NULL )
             par_id = node->parent->id;
 
